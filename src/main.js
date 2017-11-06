@@ -7,8 +7,13 @@ import router from './router'
 import fastclick from 'fastclick'
 /*因为在 build/webpack.base.conf.js里配置了别名alias 所以可以直接用common*/
 import 'common/stylus/index.styl'
+import vueLazyLoad from 'vue-lazyload'
 
 fastclick.attach(document.body)
+
+Vue.use(vueLazyLoad,{
+	loading: require('@/common/image/default.png')
+})
 /* eslint-disable no-new */
 new Vue({
   el: '#app',

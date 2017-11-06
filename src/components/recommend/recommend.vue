@@ -1,53 +1,92 @@
 <template>
   <div class="recommend" ref="recommend">
-   
-    <div class="recommend-content">
-    	<!-- recommends异步请求的数据 需要时间 所以等recommends渲染完了 再进行dom操作-->
-        <div  v-if="recommends.length" class="slider-wrapper" ref="sliderWrapper">
-        	<slider>
-        		<div v-for="item in recommends">
-        			<a :href="item.linkUrl">
-        				<img :src="item.picUrl" alt="" />
-        			</a>
-        		</div>
-        	</slider>
+   <!-- 需要等歌单渲染完-->
+    <scroll ref="scroll" class="recommend-content" :data="discList">
+    	<div>
+	    	<!-- recommends异步请求的数据 需要时间 所以等recommends渲染完了 再进行dom操作-->
+	        <div  v-if="recommends.length" class="slider-wrapper" ref="sliderWrapper">
+	        	<slider>
+	        		<div v-for="item in recommends">
+	        			<a :href="item.linkUrl">
+	        				<!-- needsclick 这个class 不是样式 是监听是否需要点击事件 有的话 不会拦截-->
+	        				<!--是fastclick（移动端300延迟解决方案） 和 better-scroll 冲突了 needsclick是fastclick里面的-->
+	        				<img @load="loadImage" class="needsclick" :src="item.picUrl" alt="" />
+	        			</a>
+	        		</div>
+	        	</slider>
+	        </div>
+	        <div class="recommend-list">
+	          <h1 class="list-title">热门歌单推荐</h1>
+	          <ul>
+	            <li v-for="item in discList" class="item">
+	            	<div class="icon">
+	            		<!-- 懒加载  vue官网上有-->
+	            		<img v-lazy="item.imgurl" width="60" height="60" alt="" />
+	            	</div>
+	            	 <div class="text">
+	            	 	<h2 class="name" v-html="item.creator.name"></h2>
+	            	 	<p class="desc" v-html="item.dissname"></p>
+	            	 </div>
+	            </li>
+	            
+	          </ul>
+	        </div>
         </div>
-        <div class="recommend-list">
-          <h1 class="list-title">热门歌单推荐</h1>
-          <ul>
-            
-            
-          </ul>
+        <div class="loading-container" v-show="!discList.length">
+        	<loading></loading>
+        	
         </div>
-   </div>
+   </scroll>
   </div>
 </template>
 
 <script type="text/ecmascript-6">
 	// slider 轮播
 	import Slider from '@/base/slider/slider'
-	import {getRecommend} from '@/api/recommend'
+	import {getRecommend,getDiscList} from '@/api/recommend'
 	import {ERR_OK} from '@/api/config'
+	import Scroll from '@/base/scroll/scroll'
+	import Loading from '@/base/loading/loading'
 	export default{
 		created(){
 			this._getRecommend()
+			this._getDiscList()
 		},
 		data(){
 			return{
-				recommends:[]
+				recommends:[],
+				discList:[]
 			}
 		},
 		components:{
-			Slider
+			Slider,
+			Scroll,
+			Loading
 		},
 		methods:{
 			_getRecommend(){
 				getRecommend().then((res)=>{
 					if(res.code === ERR_OK){
 						this.recommends = res.data.slider;
-					}
+					} 
 				})
-			}
+			},
+			_getDiscList() {
+        getDiscList().then((res) => {
+        	console.log(res.data.list)
+          if (res.code === ERR_OK) {
+            
+            this.discList = res.data.list
+          }
+        })
+     },
+     loadImage(){
+     	if(!this.checkLoaded){
+     		this.$refs.scroll.refresh();
+     		this.checkLoaded = true;
+     	}
+     		
+     }
 		}
 	}
 </script>
