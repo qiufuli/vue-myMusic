@@ -34,7 +34,6 @@
         </div>
         <div class="loading-container" v-show="!discList.length">
         	<loading></loading>
-        	
         </div>
    </scroll>
   </div>

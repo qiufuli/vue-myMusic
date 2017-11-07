@@ -67,6 +67,7 @@
       clearTimeout(this.timer)
     },
     methods: {
+    	//给轮播图的元素加样式设置宽度 等
       _setSliderWidth(isResize) {
         this.children = this.$refs.sliderGroup.children
 
