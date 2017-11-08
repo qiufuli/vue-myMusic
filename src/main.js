@@ -4,6 +4,7 @@ import 'babel-polyfill'
 import Vue from 'vue'
 import App from './App'
 import router from './router'
+import store from './store'
 import fastclick from 'fastclick'
 /*因为在 build/webpack.base.conf.js里配置了别名alias 所以可以直接用common*/
 import 'common/stylus/index.styl'
@@ -18,6 +19,7 @@ Vue.use(vueLazyLoad,{
 new Vue({
   el: '#app',
   router,
+  store,
   template: '<App/>',
   components: { App }
 })

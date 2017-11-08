@@ -19,7 +19,7 @@
 			data:{
 				type:Array,
 				default:null
-			},
+			}, 
 			listenScroll:{
 				type:Boolean,
 				default:false

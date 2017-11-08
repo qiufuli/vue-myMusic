@@ -1,5 +1,5 @@
 <template>
-	<scroll class="listview" :data="data" :probeType="probeType" :listenScroll="listenScroll" @scroll="scroll" ref="listview">
+	<scroll class="listview" :data="data" :probe-type="probeType" :listenScroll="listenScroll" @scroll="scroll" ref="listview">
 		<ul>
 			<!--第一层遍历data-->
 			<li v-for="group in data" class="list-group" ref="listGroup">
@@ -7,7 +7,7 @@
 					{{group.title}}
 				</h2>
 				<ul>
-					<li v-for="item in group.items" class="list-group-item">
+					<li @click="selectItem(item)" v-for="item in group.items" class="list-group-item">
 						<img v-lazy="item.avatar" alt="" class="avatar" />
 						<span class="name">{{item.name}}</span>
 					</li>
@@ -78,10 +78,16 @@
 		},
 
 		methods:{
+			//touchstart 是bScroll里面的方法
 			onShortcutTouchStart(e){
+				// 获取到字符的data-index属性 值是索引值 anchorIndex就是对应的索引
 		        let anchorIndex = getData(e.target, 'index')
+		        console.log(anchorIndex)
+		        //当前位于屏幕上的所有手指的一个列表 第一个。
 		        let firstTouch = e.touches[0]
+		        // 触摸的y轴坐标
 		        this.touch.y1 = firstTouch.pageY
+		        console.log("触摸的y轴坐标"+  this.touch.y1 )
 		        this.touch.anchorIndex = anchorIndex
 		
 		        this._scrollTo(anchorIndex)
@@ -95,7 +101,7 @@
 		        this._scrollTo(anchorIndex)
 			},
 			_scrollTo(index){
-				if(!index || index !== 0){
+				if(!index && index !== 0){
 					return
 				}
 				if(index < 0){
@@ -114,6 +120,7 @@
 			scroll(pos){
 				this.scrollY = pos.y;
 			},
+			// 获取li列表里面的每个高度位置
 			_calculateHeight(){
 				this.listHeight = [];
 				const list = this.$refs.listGroup;
@@ -124,6 +131,10 @@
 					height+=item.clientHeight;
 					this.listHeight.push(height);
 				}
+			},
+			//派发下点击事件
+			selectItem(item){
+				this.$emit('select',item)
 			}
 		},
 		watch:{
