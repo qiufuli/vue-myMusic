@@ -31,6 +31,8 @@
 				this.$router.push({
 					path:`/singer/${singer.id}`
 				})
+				
+				this.setSinger(singer);
 			},
 			_getSingerList(){
 				getSingerList().then((res)=>{
@@ -86,8 +88,10 @@
 				})
 				return hot.concat(ret);
 			},
-			// 
+			// ... 对象展开运算符  必须要引入这个方法
 			...mapMutations({
+				//将 `this.incrementBy(amount)` 
+				//映射为 `this.$store.commit('incrementBy', amount)`
 				setSinger:'SET_SINGER'
 			})
 			
