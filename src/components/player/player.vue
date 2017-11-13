@@ -22,21 +22,28 @@
 					</div>
 				</div>
 				<div class="bottom">
+				  	<div class="progress-wrapper">
+			            <span class="time time-l">{{format(currentTime)}}</span>
+			            <div class="progress-bar-wrapper">
+							<progress-bar :percent="percent" @percentChange="onProgressBarChange"></progress-bar>
+			            </div>
+			            <span class="time time-r">{{format(currentSong.duration)}}</span>
+		          	</div>
 					<div class="operators">
 						<div class="icon i-left">
 							<i class="icon-sequence"></i>
 						</div>
-						<div class="icon i-left">
+						<div class="icon i-left" :class="disableCls">
 							<i @click="prev" class="icon-prev"></i>
 						</div>
-						<div class="icon i-center">
+						<div class="icon i-center" :class="disableCls">
 							<i @click="togglePlaying" :class="playIcon"></i>
 						</div>
 						<!--上一曲 下一曲  主要是改变currentIndex的索引-->
-						<div class="icon i-right">
+						<div class="icon i-right" :class="disableCls">
 							<i @click="next" class="icon-next"></i>
 						</div>
-						<div class="icon i-right">
+			<div class="icon i-right">
 							<i class="icon icon-not-favorite"></i>
 						</div>
 					</div>
@@ -53,7 +60,10 @@
 					<p class="desc" v-html="currentSong.singer"></p>
 				</div>
 				<div class="control">
-					<i @click.stop.prevent="togglePlaying" :class="miniIcon"></i>
+					<progress-circle :radius="32" :percent="percent">
+						<i @click.stop.prevent="togglePlaying" class="icon-mini" :class="miniIcon"></i>
+					</progress-circle>
+
 				</div>
 				<div class="control">
 					<i class="icon-playlist"></i>
@@ -61,7 +71,8 @@
 				
 			</div>			
 		</transition>
-		<audio :src="currentSong.url" ref="audio"></audio>
+		<!--歌曲准备好的时候会有个canplay事件-->
+		<audio :src="currentSong.url" ref="audio" @canplay="ready" @error="error" @timeupdate="updateTime"></audio>
 	</div>
 </template>
 
@@ -69,9 +80,21 @@
 	import {mapGetters,mapMutations} from 'vuex'
 	import animations from 'create-keyframe-animation'
 	import {prefixStyle} from '@/common/js/dom'
+	import ProgressBar  from '@/base/progress-bar/progress-bar'
+	import ProgressCircle from '@/base/progress-circle/progress-circle'
 	const transform = prefixStyle('transform')
     const transitionDuration = prefixStyle('transitionDuration')
 	export default{
+		components:{
+			ProgressBar,
+			ProgressCircle
+		},
+		data(){
+			return{
+				songReady:false,
+				currentTime:0
+			}
+		},
 		computed:{
 			playIcon(){
 				return this.playing?'icon-pause' :'icon-play'
@@ -81,6 +104,12 @@
 			},
 			cdCls(){
 				return this.playing?'play' :'play pause'
+			},
+			disableCls(){
+				return this.songReady?'':'disable'
+			},
+			percent(){
+				return this.currentTime / this.currentSong.duration
 			},
 			//...mapGetters可以对拿到数据 但不能对其进行更改 要更改的话 要在mapMutations里
 			...mapGetters([
@@ -97,6 +126,7 @@
 				//直接调用mapGetters里的不好使 要从mapMutations修改才行 映射一个方法
 				this.setFullScreen(false);
 			},
+			//让小窗口显示
 			open(){
 				this.setFullScreen(true);
 			},
@@ -159,24 +189,86 @@
 			},
 			//暂停/播放
 			togglePlaying(){
+				if(!this.songReady){
+					return
+				}
 				this.setPlayingState(!this.playing)
 			},
+			//下一曲
 			next(){
+				if(!this.songReady){
+					return
+				}
 				let index = this.currentIndex + 1;
 				if(index === this.playlist.length){
 					index = 0;
 				}
 				this.setCurrentIndex(index);
+				//解决切换时 的播放暂停
 				if(!this.playing){
-					
+					this.togglePlaying()
 				}
+				this.songReady = false;
 			},
+			//上一曲
 			prev(){
+				if(!this.songReady){
+					return
+				}
 				let index = this.currentIndex - 1;
 				if(index === -1){
 					index = this.playlist.length - 1;
 				}
 				this.setCurrentIndex(index)
+				//解决切换时 的播放暂停
+				if(!this.playing){
+					this.togglePlaying()
+				}
+				this.songReady = false;
+			},
+			//歌曲准备好后 会自动触发该事件
+			ready(){
+				this.songReady = true
+			},
+			// 如果歌曲发生错误的话 songready为false 那么点击下一曲就不会执行了 
+			// error就是为了确保在发生错误的时候能保证功能正常运行
+			error(){
+				this.songReady = true;
+			},
+			//audio自带的 时间事件
+			updateTime(e){
+				//标识audio当前播放的时间 audio自带的currenttime的属性
+				this.currentTime = e.target.currentTime;
+			},
+			//对时间进行处理
+			format(interval){
+				// 或0 代表对正数的向下取整 相当于 Floor
+				interval = interval | 0;
+				// 转化成分钟
+				const minute = interval / 60 | 0 ;
+				const second = this._pad(interval % 60);
+				return `${minute}:${second}`
+			},
+		//分秒补零
+			_pad(num,n=2){
+				// 先把数字转成字符串
+				let len = num.toString().length;
+				while(len < n){
+					num = '0' + num;
+					len++
+				}
+				return num;
+			},
+			//父子组件的数据传递
+			onProgressBarChange(percent){
+				//设置
+				console.log(percent)
+				 const currentTime = this.currentSong.duration * percent
+				this.$refs.audio.currentTime = currentTime;
+				if(!this.playing){
+					this.togglePlaying();
+				}
+				console.log(this.$refs.audio.currentTime)
 			},
 			...mapMutations({
         		setFullScreen: 'SET_FULL_SCREEN',
