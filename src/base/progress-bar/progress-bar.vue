@@ -78,8 +78,13 @@
 			progressClick(e){
 				//e 事件里有很多参数调用 offset是对当前的偏移了 client是对外边的偏偏移了
 //				console.log('e.offsetX',e.offsetX)
-				
-				this._offset(e.offsetX);
+				//这里点击事件用e.offsetX有问题 
+				console.log(e)
+				// getBoundingClientRect 这个方法返回一个矩形对象，包含四个属性：left、top、right和bottom。
+				//分别表示元素各边与页面上边和左边的距离。
+				const rect = this.$refs.progressBar.getBoundingClientRect()
+				const offsetWidth = e.pageX - rect.left;
+				this._offset(offsetWidth);
 				this._triggerPercent();
 			}
 		}

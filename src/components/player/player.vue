@@ -12,16 +12,40 @@
 					<h1 class="title" v-html="currentSong.name"></h1>
 					<h2 class="subtitle" v-html="currentSong.singer"></h2>
 				</div>
-				<div class="middle">
-					<div class="middle-l">
+				<div class="middle" 
+					@touchstart.prevent="middleTouchStart"
+					 @touchmove.prevent="middleTouchMove"
+					  @touchend="middleTouchEnd"
+					>
+					<div class="middle-l" ref="middleL">
 						<div class="cd-wrapper" ref="cdWrapper">
 							<div class="cd" :class="cdCls">
 								<img class="image" :src="currentSong.image" alt="" />
 							</div>	
 						</div>
+						<div class="playing-lyric-wrapper">
+							<div class="playing-lyric">
+								{{playingLyric}}
+							</div>
+						</div>
 					</div>
+					<scroll class="middle-r" ref="lyricList" :data="currentLyric && currentLyric.lines">
+						<div class="lyric-wrapper">
+			              <div v-if="currentLyric">
+			                <p ref="lyricLine"
+			                   class="text" 
+			                   :class="{'current':currentLineNum === index}"
+			                   v-for="(line,index) in currentLyric.lines">{{line.txt}}</p>
+			              </div>
+			            </div>
+					</scroll>
 				</div>
+				
 				<div class="bottom">
+					<div class="dot-wrapper">
+			            <span class="dot" :class="{'active':currentShow==='cd'}"></span>
+			            <span class="dot" :class="{'active':currentShow==='lyric'}"></span>
+		          	</div>
 				  	<div class="progress-wrapper">
 			            <span class="time time-l">{{format(currentTime)}}</span>
 			            <div class="progress-bar-wrapper">
@@ -31,7 +55,8 @@
 		          	</div>
 					<div class="operators">
 						<div class="icon i-left">
-							<i class="icon-sequence"></i>
+							<!--播放模式-->
+							<i :class="iconMode" @click="changeMode"></i>
 						</div>
 						<div class="icon i-left" :class="disableCls">
 							<i @click="prev" class="icon-prev"></i>
@@ -72,7 +97,7 @@
 			</div>			
 		</transition>
 		<!--歌曲准备好的时候会有个canplay事件-->
-		<audio :src="currentSong.url" ref="audio" @canplay="ready" @error="error" @timeupdate="updateTime"></audio>
+		<audio :src="currentSong.url" ref="audio" @canplay="ready" @error="error" @timeupdate="updateTime" @ended="end"></audio>
 	</div>
 </template>
 
@@ -82,17 +107,28 @@
 	import {prefixStyle} from '@/common/js/dom'
 	import ProgressBar  from '@/base/progress-bar/progress-bar'
 	import ProgressCircle from '@/base/progress-circle/progress-circle'
+	import {playMode} from '@/common/js/config'
+	import {shuffle} from '@/common/js/util'
+	import Scroll from '@/base/scroll/scroll'
+	//对歌词进行处理
+	import Lyric from 'lyric-parser'
+	
 	const transform = prefixStyle('transform')
     const transitionDuration = prefixStyle('transitionDuration')
 	export default{
 		components:{
 			ProgressBar,
-			ProgressCircle
+			ProgressCircle,
+			Scroll
 		},
 		data(){
 			return{
 				songReady:false,
-				currentTime:0
+				currentTime:0,
+				currentLyric:null,
+				currentLineNum:0,
+				currentShow:'cd',
+				playingLyric:''
 			}
 		},
 		computed:{
@@ -111,16 +147,34 @@
 			percent(){
 				return this.currentTime / this.currentSong.duration
 			},
+			//模式样式
+			iconMode(){
+				return this.mode === playMode.sequence ? 'icon-sequence' : this.mode === playMode.loop ? 'icon-loop' : 'icon-random';
+			},
 			//...mapGetters可以对拿到数据 但不能对其进行更改 要更改的话 要在mapMutations里
 			...mapGetters([
 				'fullScreen',
 				'playlist',
 				'currentSong',
 				'playing',
-				'currentIndex'
+				'currentIndex',
+				//播放模式	
+				'mode',
+				//获取原始列表
+				'sequenceList'
 			])
 		},
+		created(){
+			this.touch = {}
+		},
 		methods:{
+			...mapMutations({
+        		setFullScreen: 'SET_FULL_SCREEN',
+        		setPlayingState:'SET_PLAYING_STATE',
+        		setCurrentIndex:'SET_CURRENT_INDEX',
+        		setPlayMode:'SET_PLAY_MODE',
+        		setPlayList:'SET_PLAYLIST'
+      		}),
 			// 播放器的窗口 打开 收回
 			back(){
 				//直接调用mapGetters里的不好使 要从mapMutations修改才行 映射一个方法
@@ -192,21 +246,28 @@
 				if(!this.songReady){
 					return
 				}
-				this.setPlayingState(!this.playing)
+				this.setPlayingState(!this.playing);
+				if(this.currentLyric){
+					this.currentLyric.togglePlay();
+				}
 			},
 			//下一曲
 			next(){
 				if(!this.songReady){
 					return
 				}
-				let index = this.currentIndex + 1;
-				if(index === this.playlist.length){
-					index = 0;
-				}
-				this.setCurrentIndex(index);
-				//解决切换时 的播放暂停
-				if(!this.playing){
-					this.togglePlaying()
+				if(this.playlist.length === 1){
+					this.loop();
+				}else{
+					let index = this.currentIndex + 1;
+					if(index === this.playlist.length){
+						index = 0;
+					}
+					this.setCurrentIndex(index);
+					//解决切换时 的播放暂停
+					if(!this.playing){
+						this.togglePlaying()
+					}
 				}
 				this.songReady = false;
 			},
@@ -215,14 +276,18 @@
 				if(!this.songReady){
 					return
 				}
-				let index = this.currentIndex - 1;
-				if(index === -1){
-					index = this.playlist.length - 1;
-				}
-				this.setCurrentIndex(index)
-				//解决切换时 的播放暂停
-				if(!this.playing){
-					this.togglePlaying()
+				if(this.playlist.length === 1){
+					this.loop();
+				}else{
+					let index = this.currentIndex - 1;
+					if(index === -1){
+						index = this.playlist.length - 1;
+					}
+					this.setCurrentIndex(index)
+					//解决切换时 的播放暂停
+					if(!this.playing){
+						this.togglePlaying()
+					}
 				}
 				this.songReady = false;
 			},
@@ -262,26 +327,145 @@
 			//父子组件的数据传递
 			onProgressBarChange(percent){
 				//设置
-				console.log(percent)
 				 const currentTime = this.currentSong.duration * percent
 				this.$refs.audio.currentTime = currentTime;
 				if(!this.playing){
 					this.togglePlaying();
 				}
 				console.log(this.$refs.audio.currentTime)
+				if(this.currentLyric){
+					this.currentLyric.seek(currentTime * 1000)
+				}
 			},
-			...mapMutations({
-        		setFullScreen: 'SET_FULL_SCREEN',
-        		setPlayingState:'SET_PLAYING_STATE',
-        		setCurrentIndex:'SET_CURRENT_INDEX'
-      		})
+			//改变模式
+			changeMode(){
+				//用取余数的方式 来实现循环 点击 1 2 0 余数只能会是这些
+				const mode = (this.mode + 1) % 3;
+				this.setPlayMode(mode);
+				//实现功能 
+				let list = null;
+				if(mode === playMode.random){
+					//要一个被打乱的数组
+					list = shuffle(this.sequenceList)
+				}else{
+					list = this.sequenceList;
+				}
+				this.resetCurrentIndex(list);
+				this.setPlayList(list)
+			},
+			resetCurrentIndex(list){
+				let index = list.findIndex((item)=>{
+					return item.id === this.currentSong.id;
+				})
+				this.setCurrentIndex(index);
+			},
+			end(){
+				if(this.mode === playMode.loop){
+					this.loop()
+				}else{
+					this.next()	
+				}
+			},
+			//单曲循环 就可以 把当前的播放时间切换成0就可以了 没必要改变播放列表
+			loop(){
+				this.$refs.audio.currentTime = 0;
+				this.$refs.audio.play();
+				if(this.currentLyric){
+					this.currentLyric.seek(0);
+				}
+			},
+			getLyric(){
+				this.currentSong.getLyric().then((lyric)=>{
+					this.currentLyric = new Lyric(lyric,this.handleLyric)
+					if(this.playing){
+						this.currentLyric.play();
+					}
+					console.log(this.currentLyric)
+				}).catch(()=>{
+					this.currentLyric = null;
+					this.playingLyric = '';
+					this.currentLineNum = 0;
+				})
+			},
+			handleLyric({lineNum,txt}){
+				this.currentLineNum = lineNum;
+				if(lineNum > 5){
+					//滚动到中间
+					let lineEl = this.$refs.lyricLine[lineNum - 5]
+					this.$refs.lyricList.scrollToElement(lineEl,1000)
+				}else{
+					this.$refs.lyricList.scrollTo(0, 0, 1000);
+				}
+				this.playingLyric = txt
+			},
+			middleTouchStart(e){
+				this.touch.initiated = true;
+				const touch = e.touches[0];
+				this.touch.startX = touch.pageX;
+				this.touch.startY = touch.pageY;
+			},
+			middleTouchMove(e){
+		        if (!this.touch.initiated) {
+		          return
+		        }
+		        const touch = e.touches[0]
+		        const deltaX = touch.pageX - this.touch.startX
+		        const deltaY = touch.pageY - this.touch.startY
+		        if (Math.abs(deltaY) > Math.abs(deltaX)) {
+		          return
+		        }
+		        const left = this.currentShow === 'cd' ? 0 : -window.innerWidth
+		        const offsetWidth = Math.min(0, Math.max(-window.innerWidth, left + deltaX))
+		        this.touch.percent = Math.abs(offsetWidth / window.innerWidth)
+		        this.$refs.lyricList.$el.style[transform] = `translate3d(${offsetWidth}px,0,0)`
+				this.$refs.lyricList.$el.style[transitionDuration] = 0;
+				this.$refs.middleL.style.opacity = 1 - this.touch.percent
+        		this.$refs.middleL.style[transitionDuration] = 0
+			},
+			middleTouchEnd(){
+				let offsetWidth
+        		let opacity
+				if(this.currentShow === 'cd'){
+					 if (this.touch.percent > 0.1) {
+					 	offsetWidth = -window.innerWidth;
+					 	opacity = 0;
+					 	this.currentShow = 'lyric';
+					 }else{
+					 	offsetWidth = 0;
+					 	opacity = 1;
+					 }
+				}else{
+					if (this.touch.percent < 0.9) {
+			            offsetWidth = 0
+			            this.currentShow = 'cd'
+			            opacity = 1
+			          } else {
+			            offsetWidth = -window.innerWidth
+			            opacity = 0
+			        }
+				}
+		        const time = 300
+		        this.$refs.lyricList.$el.style[transform] = `translate3d(${offsetWidth}px,0,0)`
+		        this.$refs.lyricList.$el.style[transitionDuration] = `${time}ms`
+		        this.$refs.middleL.style.opacity = opacity
+		        this.$refs.middleL.style[transitionDuration] = `${time}ms`
+		        this.touch.initiated = false
+			}
 		},
 		watch:{
 			// 监听currentsong的变化 是否播放
-			currentSong(){
-				this.$nextTick(()=>{
+			currentSong(newSong,oldSong){
+				//点击播放模式的时候 只是模式切换 原歌曲id不变
+				if(newSong.id === oldSong.id){
+					return
+				}
+				if(this.currentLyric){
+					this.currentLyric.stop();
+				}
+				setTimeout(()=>{
+					this.getLyric()
 					this.$refs.audio.play();
-				})
+				},1000)
 
 			},
 			playing(newPlaying){
@@ -293,6 +477,7 @@
 		}
 	}
 </script>
+
 
 <style scoped lang="stylus" rel="stylesheet/stylus">
   @import "~common/stylus/variable"
@@ -380,7 +565,6 @@
                 width: 100%
                 height: 100%
                 border-radius: 50%
-
           .playing-lyric-wrapper
             width: 80%
             margin: 30px auto 0 auto
@@ -391,7 +575,7 @@
               line-height: 20px
               font-size: $font-size-medium
               color: $color-text-l
-        .middle-r
+       	.middle-r
           display: inline-block
           vertical-align: top
           width: 100%

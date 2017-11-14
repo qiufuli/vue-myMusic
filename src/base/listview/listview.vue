@@ -78,6 +78,9 @@
 		},
 
 		methods:{
+			refresh(){
+				this.$refs.listview.refresh();
+			},
 			//touchstart 是bScroll里面的方法
 			onShortcutTouchStart(e){
 				// 获取到字符的data-index属性 值是索引值 anchorIndex就是对应的索引

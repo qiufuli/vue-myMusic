@@ -10,7 +10,7 @@ const state = {
 	fullScreen:false,
 	//播放列表
 	playlist:[],
-	//顺序列表
+	//原始列表
 	sequenceList:[],
 	//播放模式
 	mode:playMode.sequence,
