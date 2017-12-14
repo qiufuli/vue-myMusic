@@ -16,6 +16,7 @@ const state = {
 	mode:playMode.sequence,
 	//当前播放的索引
 	currentIndex:-1,
-	
+	disc:{},
+	topList:{}
 }
 export default state

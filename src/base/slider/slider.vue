@@ -70,13 +70,11 @@
     	//给轮播图的元素加样式设置宽度 等
       _setSliderWidth(isResize) {
         this.children = this.$refs.sliderGroup.children
-
         let width = 0
         let sliderWidth = this.$refs.slider.clientWidth
         for (let i = 0; i < this.children.length; i++) {
           let child = this.children[i]
           addClass(child, 'slider-item')
-
           child.style.width = sliderWidth + 'px'
           width += sliderWidth
         }
@@ -98,6 +96,7 @@
 
         this.slider.on('scrollEnd', () => {
           let pageIndex = this.slider.getCurrentPage().pageX
+
           if (this.loop) {
             pageIndex -= 1
           }

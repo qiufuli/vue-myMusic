@@ -46,7 +46,6 @@
  					if(res.code === ERR_OK){
  						// 拿的是数据list中musicData的值
  						this.songs = this._normalizeSongs(res.data.list)
-   						console.log('111',this.songs)
  					}
  				})
 			},

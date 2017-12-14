@@ -17,7 +17,7 @@
 		<scroll @scroll='scroll' :probe-type="probeType" :listen-scroll="listenScroll" :data="songs" class="list" ref="list">
 			<div class="song-list-wrapper">
 				<!--获取到由子组件派发的数据-->
-				<song-list @select="selectItem" :songs="songs"></song-list>
+				<song-list :rank="rank" @select="selectItem" :songs="songs"></song-list>
 			</div>
 			<!-- loading 需要有个包裹层-->
 			<div v-show="!songs.length" class="loading-container">

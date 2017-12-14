@@ -68,7 +68,7 @@
 						<div class="icon i-right" :class="disableCls">
 							<i @click="next" class="icon-next"></i>
 						</div>
-			<div class="icon i-right">
+						<div class="icon i-right">
 							<i class="icon icon-not-favorite"></i>
 						</div>
 					</div>
@@ -165,7 +165,9 @@
 			])
 		},
 		created(){
-			this.touch = {}
+			this.touch = {};
+		},
+		mounted(){
 		},
 		methods:{
 			...mapMutations({
@@ -177,6 +179,7 @@
       		}),
 			// 播放器的窗口 打开 收回
 			back(){
+
 				//直接调用mapGetters里的不好使 要从mapMutations修改才行 映射一个方法
 				this.setFullScreen(false);
 			},
@@ -341,6 +344,7 @@
 			changeMode(){
 				//用取余数的方式 来实现循环 点击 1 2 0 余数只能会是这些
 				const mode = (this.mode + 1) % 3;
+				    
 				this.setPlayMode(mode);
 				//实现功能 
 				let list = null;
