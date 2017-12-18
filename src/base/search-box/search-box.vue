@@ -28,12 +28,16 @@
       // 父组件可以通过ref来调用组件的方法
       setQuery(query){
         this.query = query
+      },
+      blur(){
+        this.$refs.query.blur();
       }
     },
     created(){
-      this.$watch('query',(newQuery)=>{
+      //节流
+      this.$watch('query',debounce((newQuery)=>{
         this.$emit('query',newQuery)
-      })
+      },200))
     }
   }
 </script>

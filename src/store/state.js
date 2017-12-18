@@ -1,5 +1,6 @@
 
 import {playMode} from '@/common/js/config'
+import {loadSearch} from 'common/js/cache'
 // 所有的状态都放在这里 单一状态树
 const state = {
 	singer:{},
@@ -17,6 +18,7 @@ const state = {
 	//当前播放的索引
 	currentIndex:-1,
 	disc:{},
-	topList:{}
+	topList:{},
+	searchHistory:loadSearch()
 }
 export default state

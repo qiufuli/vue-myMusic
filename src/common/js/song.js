@@ -45,7 +45,7 @@ export function createSong(musicData) {
   })
 }
 // 多个歌手名字
-function filterSinger(singer) {
+export function filterSinger(singer) {
   let ret = []
   if (!singer) {
     return ''
